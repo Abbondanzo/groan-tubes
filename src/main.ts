@@ -255,18 +255,31 @@ async function requestWakeLock() {
   }
 }
 
+/**
+ * Tear audio down completely whenever the page is hidden, backgrounded or unloaded.
+ * Only suspending the context mid-groan froze the voice at full volume, and iOS can
+ * keep a suspended (or reloading) page's audio running. A closed context can't
+ * restart, so coming back needs a tap to build a new one.
+ */
+function stopAudio() {
+  if (!audio || !voice) return;
+  voice.kill();
+  void audio.close().catch(() => {});
+  audio = null;
+  voice = null;
+  void wakeLock?.release().catch(() => {});
+  wakeLock = null;
+
+  startBtn.textContent = "Tap to resume";
+  startBtn.disabled = false;
+  startEl.classList.remove("hidden");
+}
+
 document.addEventListener("visibilitychange", () => {
-  if (!voice || !audio) return;
-  if (document.hidden) {
-    voice.silence();
-    void audio.suspend();
-    void wakeLock?.release();
-    wakeLock = null;
-  } else {
-    void audio.resume();
-    requestWakeLock();
-  }
+  if (document.hidden) stopAudio();
 });
+window.addEventListener("pagehide", stopAudio);
+document.addEventListener("freeze", stopAudio);
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {

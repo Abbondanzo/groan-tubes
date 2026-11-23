@@ -273,8 +273,14 @@ export class GroanVoice {
     knock.stop(now + 0.12);
   }
 
-  silence() {
-    this.voice.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02);
+  /** Cut the sound instantly and unhook it from the speakers. */
+  kill() {
+    const now = this.ctx.currentTime;
+    for (const g of [this.master.gain, this.voice.gain]) {
+      g.cancelScheduledValues(now);
+      g.setValueAtTime(0, now);
+    }
+    this.master.disconnect();
     this.pitchHz = 0;
   }
 }
