@@ -18,7 +18,9 @@ use **Add to Home Screen** to install it.
   reed waveform through two vowel formant filters that close from "aah" to "ooh"
   while the pitch drops over the fall. Volume follows how fast the weight is
   moving, and a fast growl flutter gives it the rattly reed sound.
-- **Sounds.** *Groan* (both directions), *Moo* (one way only, like a moo can) and
+- **Direction matters.** The reed faces one way, so flipping back sounds a little
+  higher and thinner than the first flip from upright, like a real tube.
+- **Sounds.** *Groan*, *Moo* (sounds on the first flip only, like a moo can) and
   *Ghost*.
 - **PWA.** Manifest, offline service worker, portrait lock, screen wake lock while
   open.

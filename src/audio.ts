@@ -23,10 +23,14 @@ export interface Preset {
   growlRate: number;
   growlDepth: number;
   breath: number;
-  /** Like a moo can: only sounds when the weight falls one way. */
-  oneWay: boolean;
   /** Output level, to even out loudness between presets. */
   level: number;
+  /**
+   * The reed faces one way, so air through it the other way sounds different.
+   * Multipliers applied when the weight falls toward the bottom of the phone
+   * (the second flip; the first flip from upright is the "forward" groan).
+   */
+  reverse: { pitch: number; formant: number; level: number };
 }
 
 export const PRESETS: Preset[] = [
@@ -43,8 +47,8 @@ export const PRESETS: Preset[] = [
     growlRate: 19,
     growlDepth: 0.12,
     breath: 0.05,
-    oneWay: false,
     level: 1.1,
+    reverse: { pitch: 1.14, formant: 1.18, level: 0.8 },
   },
   {
     id: "moo",
@@ -59,8 +63,8 @@ export const PRESETS: Preset[] = [
     growlRate: 16,
     growlDepth: 0.22,
     breath: 0.04,
-    oneWay: true,
     level: 1.1,
+    reverse: { pitch: 1, formant: 1, level: 0 },
   },
   {
     id: "ghost",
@@ -75,8 +79,8 @@ export const PRESETS: Preset[] = [
     growlRate: 9,
     growlDepth: 0.1,
     breath: 0.22,
-    oneWay: false,
     level: 0.4,
+    reverse: { pitch: 0.9, formant: 1, level: 1 },
   },
 ];
 
@@ -199,7 +203,7 @@ export class GroanVoice {
   /**
    * @param flow 0..1, how fast air is moving through the reed
    * @param travel 0..1, how far the weight is through its current fall
-   * @param direction +1 falling toward the bottom of the phone, -1 toward the top
+   * @param direction -1 falling toward the top of the phone (forward), +1 toward the bottom
    */
   update(flow: number, travel: number, direction: number) {
     const p = this.preset;
@@ -209,7 +213,8 @@ export class GroanVoice {
     const bend = Math.pow(t, 1.3);
 
     let level = flow < 0.03 ? 0 : Math.pow(clamp01(flow), 1.25);
-    if (p.oneWay && direction < 0) level = 0;
+    const rev = direction > 0 ? p.reverse : { pitch: 1, formant: 1, level: 1 };
+    level *= rev.level;
 
     if (level === 0) {
       // Let the tail ring out at its last pitch instead of sliding back up.
@@ -222,15 +227,15 @@ export class GroanVoice {
     // Slow random wander, like an uneven reed, instead of a steady vibrato.
     this.jitter += (Math.random() - 0.5) * 0.004 - this.jitter * 0.08;
     // Faster air pushes the reed slightly sharp.
-    const pitch = lerp(p.pitch[0], p.pitch[1], bend) * (0.97 + 0.05 * flow) * (1 + this.jitter);
+    const pitch = lerp(p.pitch[0], p.pitch[1], bend) * rev.pitch * (0.97 + 0.05 * flow) * (1 + this.jitter);
     this.pitchHz = pitch;
 
     this.osc.frequency.setTargetAtTime(pitch, now, 0.03);
     this.vibratoGain.gain.setTargetAtTime(pitch * p.vibratoDepth, now, 0.1);
 
-    const f1 = lerp(p.f1[0], p.f1[1], bend);
+    const f1 = lerp(p.f1[0], p.f1[1], bend) * rev.formant;
     this.f1.frequency.setTargetAtTime(f1, now, 0.04);
-    this.f2.frequency.setTargetAtTime(lerp(p.f2[0], p.f2[1], bend), now, 0.04);
+    this.f2.frequency.setTargetAtTime(lerp(p.f2[0], p.f2[1], bend) * rev.formant, now, 0.04);
     this.breathFilter.frequency.setTargetAtTime(f1 * 1.5, now, 0.05);
     this.breathGain.gain.setTargetAtTime(p.breath * level * 3, now, 0.04);
 
