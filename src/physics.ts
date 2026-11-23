@@ -6,9 +6,9 @@
 // velocity as easing toward (terminal speed × gravity component).
 
 /** Tube lengths per second when the tube is vertical. */
-const TERMINAL_SPEED = 0.85;
+const TERMINAL_SPEED = 1.25;
 /** How quickly the weight gets up to speed (seconds). */
-const RESPONSE = 0.12;
+const RESPONSE = 0.09;
 /** Below this gravity component the weight sticks (static friction). */
 const STICTION = 0.12;
 

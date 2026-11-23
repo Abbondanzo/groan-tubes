@@ -102,17 +102,27 @@ startBtn.addEventListener("click", () => {
   const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
   if (session) session.type = "playback";
 
+  let ctx: AudioContext;
   try {
-    audio = createAudioContext();
-    voice = new GroanVoice(audio);
-    voice.setPreset(preset);
-    void audio.resume();
+    ctx = audio = createAudioContext();
+    void ctx.resume(); // inside the tap, so iOS unlocks audio
   } catch (err) {
     startNote.textContent = "Couldn't start audio on this device.";
     startBtn.disabled = false;
     console.error(err);
     return;
   }
+  GroanVoice.create(ctx)
+    .then((v) => {
+      if (audio !== ctx) return v.kill(); // page was hidden while loading
+      v.setPreset(preset);
+      voice = v;
+    })
+    .catch((err) => {
+      console.error(err);
+      stopAudio();
+      startNote.textContent = "Couldn't load the sound engine on this browser.";
+    });
 
   window.addEventListener("deviceorientation", onOrientation);
   startEl.classList.add("hidden");
@@ -262,8 +272,8 @@ async function requestWakeLock() {
  * restart, so coming back needs a tap to build a new one.
  */
 function stopAudio() {
-  if (!audio || !voice) return;
-  voice.kill();
+  if (!audio) return;
+  voice?.kill();
   void audio.close().catch(() => {});
   audio = null;
   voice = null;

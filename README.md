@@ -11,17 +11,19 @@ use **Add to Home Screen** to install it.
 - **Tilt.** `deviceorientation` gives the phone's front-to-back rotation (beta).
   `sin(beta)` is the part of gravity along the phone's long axis: +1 upright, −1
   upside down, 0 lying flat. Side-to-side roll doesn't matter.
-- **Physics** (`src/physics.ts`). A weight with a little static friction that eases
-  toward a terminal speed (air drag in the tube), stopping with a thunk at each end
-  cap.
-- **Sound** (`src/audio.ts`). Synthesized live with Web Audio, no samples: a buzzy
-  reed waveform through two vowel formant filters that close from "aah" to "ooh"
-  while the pitch drops over the fall. Volume follows how fast the weight is
-  moving, and a fast growl flutter gives it the rattly reed sound.
-- **Direction matters.** The reed faces one way, so flipping back sounds a little
-  higher and thinner than the first flip from upright, like a real tube.
-- **Sounds.** *Groan*, *Moo* (sounds on the first flip only, like a moo can) and
-  *Ghost*.
+- **Physics** (`src/physics.ts`). A weight with a little static friction that quickly
+  reaches a terminal speed (air drag in the tube). A full fall takes about 0.9 s, like a
+  real 40 cm tube, and ends with a knock against the end cap.
+- **Sound** (`public/groan-processor.js`, `src/audio.ts`). A small physical model,
+  tuned against recordings of real groan tubes. The reed holds a nearly steady, bright
+  pitch (~320 Hz). The groan comes from the tube: a waveguide whose resonances slide
+  across the reed's harmonics as the weight moves and the air column changes length.
+- **Direction matters.** On the first flip from upright the column ahead of the
+  weight shrinks, so the resonances climb and the pitch drifts up. Flipping back,
+  the column grows, so the resonances fall, the pitch sags and the sound is a little
+  quieter: the same asymmetry a real tube has.
+- **Sounds.** *Groan* (a standard 40 cm tube), *Big tube* (longer and lower) and
+  *Moo* (sounds on the first flip only, like a moo can).
 - **PWA.** Manifest, offline service worker, portrait lock, screen wake lock while
   open.
 
