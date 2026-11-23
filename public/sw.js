@@ -1,8 +1,8 @@
 // Offline support: pages are network-first (so a new deploy shows up on the next
 // open), everything else stale-while-revalidate. Vite's hashed asset names mean old
 // files never go stale.
-const CACHE = "groan-tubes-v3";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon.svg", "./groan-processor.js"];
+const CACHE = "groan-tubes-v4";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

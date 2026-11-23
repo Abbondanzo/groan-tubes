@@ -14,7 +14,7 @@ use **Add to Home Screen** to install it.
 - **Physics** (`src/physics.ts`). A weight with a little static friction that quickly
   reaches a terminal speed (air drag in the tube). A full fall takes about 0.9 s, like a
   real 40 cm tube, and ends with a knock against the end cap.
-- **Sound** (`public/groan-processor.js`, `src/audio.ts`). A small physical model,
+- **Sound** (`src/groan-processor.js`, `src/audio.ts`). A small physical model,
   tuned against recordings of real groan tubes. The reed holds a nearly steady, bright
   pitch (~320 Hz). The groan comes from the tube: a waveguide whose resonances slide
   across the reed's harmonics as the weight moves and the air column changes length.

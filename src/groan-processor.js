@@ -23,11 +23,18 @@ class GroanProcessor extends AudioWorkletProcessor {
       { name: "level", defaultValue: 0, minValue: 0, maxValue: 4 },
       { name: "feedback", defaultValue: -0.8, minValue: -0.98, maxValue: 0.98, automationRate: "k-rate" },
       { name: "damping", defaultValue: 0.3, minValue: 0, maxValue: 0.99, automationRate: "k-rate" },
+      // Real playback rate ÷ the context's nominal rate. Some iOS devices play a context
+      // slower or faster than its sampleRate claims; the main thread measures this
+      // against the wall clock and we compensate so pitch and tube length stay true.
+      { name: "rate", defaultValue: 1, minValue: 0.1, maxValue: 10, automationRate: "k-rate" },
     ];
   }
 
-  constructor() {
+  constructor(options) {
     super();
+    // Prefer the context's own rate, passed in, over the worklet global.
+    const opt = options && options.processorOptions;
+    this.sr = (opt && opt.sampleRate) || sampleRate;
     this.table = new Float32Array(TABLE_SIZE + 1);
     this.buf = new Float32Array(BUF_SIZE);
     this.write = 0;
@@ -62,7 +69,7 @@ class GroanProcessor extends AudioWorkletProcessor {
     const { f0, length, level } = params;
     const fb = params.feedback[0];
     const damp = params.damping[0];
-    const sr = sampleRate;
+    const sr = this.sr * params.rate[0];
     const table = this.table;
     const buf = this.buf;
     // Resonant peaks reach 1 / (1 - |fb|); scale back so the level stays put.

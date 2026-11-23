@@ -179,6 +179,12 @@ footer {
 #fallback[hidden] {
   display: none;
 }
+.diag {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #555;
+  min-height: 1em;
+}
 .hint {
   font-size: 11px;
   color: var(--muted);

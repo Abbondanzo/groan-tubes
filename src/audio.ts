@@ -7,8 +7,11 @@
 // shrinks and the resonances climb; the other way it grows and they fall, and the
 // pitch drifts a few percent up or down with them. A full fall takes under a second.
 //
-// The model itself runs in an AudioWorklet (public/groan-processor.js). This file
+// The model itself runs in an AudioWorklet (src/groan-processor.js). This file
 // drives it from the weight's position and speed.
+
+// Imported as a hashed asset URL so a cached copy can never be paired with newer code.
+import processorUrl from "./groan-processor.js?url";
 
 export interface Preset {
   id: string;
@@ -101,7 +104,7 @@ export class GroanVoice {
 
   /** Loads the worklet; the context must support AudioWorklet (iOS 14.5+). */
   static async create(ctx: BaseAudioContext): Promise<GroanVoice> {
-    await ctx.audioWorklet.addModule(`${import.meta.env.BASE_URL}groan-processor.js`);
+    await ctx.audioWorklet.addModule(processorUrl);
     return new GroanVoice(ctx);
   }
 
@@ -112,6 +115,7 @@ export class GroanVoice {
       numberOfInputs: 0,
       numberOfOutputs: 1,
       outputChannelCount: [1],
+      processorOptions: { sampleRate: ctx.sampleRate },
     });
     const p = this.node.parameters;
     this.f0 = p.get("f0")!;
@@ -154,6 +158,11 @@ export class GroanVoice {
 
   get current() {
     return this.preset;
+  }
+
+  /** Correct for a device that plays faster or slower than its nominal sample rate. */
+  setPlaybackRate(ratio: number) {
+    this.node.parameters.get("rate")!.setValueAtTime(ratio, this.ctx.currentTime);
   }
 
   /**

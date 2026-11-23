@@ -20,6 +20,7 @@ const hintEl = $("fallback-hint");
 const rTilt = $("r-tilt");
 const rFlow = $("r-flow");
 const rPitch = $("r-pitch");
+const diagEl = $("diag");
 
 const STORAGE_KEY = "groan-tubes:preset";
 const slider = new Slider();
@@ -117,6 +118,7 @@ startBtn.addEventListener("click", () => {
       if (audio !== ctx) return v.kill(); // page was hidden while loading
       v.setPreset(preset);
       voice = v;
+      measureClock(ctx, v);
     })
     .catch((err) => {
       console.error(err);
@@ -263,6 +265,37 @@ async function requestWakeLock() {
   } catch {
     /* not supported or denied */
   }
+}
+
+/**
+ * Some iOS setups run the audio hardware at a different rate than the AudioContext
+ * reports, which plays everything slowed down (lower) or sped up. The context clock
+ * advances with the hardware, so comparing it with the wall clock reveals the true
+ * ratio. Re-checked a few times since iOS can switch rates (e.g. Bluetooth).
+ */
+function measureClock(ctx: AudioContext, v: GroanVoice) {
+  const samples: [number, number][] = [];
+  let applied = 1;
+  const tick = () => {
+    if (audio !== ctx || ctx.state !== "running") return;
+    samples.push([performance.now() / 1000, ctx.currentTime]);
+    if (samples.length > 20) samples.shift();
+    if (samples.length >= 5) {
+      const [w0, a0] = samples[0];
+      const [w1, a1] = samples[samples.length - 1];
+      if (w1 - w0 > 1.5) {
+        const ratio = (a1 - a0) / (w1 - w0);
+        const fix = Math.abs(ratio - 1) > 0.03 ? ratio : 1;
+        if (Math.abs(fix - applied) > 0.01) {
+          applied = fix;
+          v.setPlaybackRate(fix);
+        }
+        diagEl.textContent = `${(ctx.sampleRate / 1000).toFixed(1)} kHz · clock ${ratio.toFixed(2)}×${fix !== 1 ? " (corrected)" : ""}`;
+      }
+    }
+    setTimeout(tick, 250);
+  };
+  setTimeout(tick, 250);
 }
 
 /**
