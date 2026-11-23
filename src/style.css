@@ -141,7 +141,7 @@ footer {
   gap: 8px;
 }
 .chip,
-#flip,
+#fallback button,
 #start-btn {
   font: inherit;
   color: var(--text);
@@ -160,8 +160,21 @@ footer {
 }
 #fallback {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  text-align: center;
+}
+#fallback .buttons {
+  display: flex;
+  gap: 8px;
+}
+#fallback button[hidden] {
+  display: none;
+}
+#fallback #enable-motion {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 #fallback[hidden] {
   display: none;

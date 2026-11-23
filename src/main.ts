@@ -15,6 +15,8 @@ const startNote = $("start-note");
 const presetsEl = $("presets");
 const fallbackEl = $("fallback");
 const flipBtn = $<HTMLButtonElement>("flip");
+const motionBtn = $<HTMLButtonElement>("enable-motion");
+const hintEl = $("fallback-hint");
 const rTilt = $("r-tilt");
 const rFlow = $("r-flow");
 const rPitch = $("r-pitch");
@@ -78,8 +80,23 @@ if (!window.isSecureContext) {
   startNote.textContent = "Motion sensors need HTTPS — open the https:// link.";
 }
 
-startBtn.addEventListener("click", async () => {
+type MotionState = "granted" | "denied" | "not-needed";
+
+/**
+ * iOS only shows the motion prompt if requestPermission() is called synchronously
+ * inside a tap. Any `await` before it ends the gesture and the call is rejected
+ * without a prompt, so this must run before anything async.
+ */
+function requestMotionPermission(): Promise<MotionState> {
+  if (!Orientation || typeof Orientation.requestPermission !== "function") {
+    return Promise.resolve("not-needed");
+  }
+  return Orientation.requestPermission().catch(() => "denied" as const);
+}
+
+startBtn.addEventListener("click", () => {
   startBtn.disabled = true;
+  const permission = requestMotionPermission(); // first, while the tap is still live
 
   // iOS: let Web Audio play even when the ringer switch is on silent.
   const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
@@ -89,7 +106,7 @@ startBtn.addEventListener("click", async () => {
     audio = createAudioContext();
     voice = new GroanVoice(audio);
     voice.setPreset(preset);
-    await audio.resume();
+    void audio.resume();
   } catch (err) {
     startNote.textContent = "Couldn't start audio on this device.";
     startBtn.disabled = false;
@@ -97,25 +114,22 @@ startBtn.addEventListener("click", async () => {
     return;
   }
 
-  // iOS 13+ needs an explicit permission prompt, triggered from this tap.
-  if (Orientation && typeof Orientation.requestPermission === "function") {
-    try {
-      const state = await Orientation.requestPermission();
-      if (state !== "granted") startNote.textContent = "Motion access denied — using touch.";
-    } catch {
-      /* fall through to touch controls */
-    }
-  }
   window.addEventListener("deviceorientation", onOrientation);
-
-  // If no real readings show up, switch to touch / keyboard controls.
-  setTimeout(() => {
-    if (!sensorActive) enableFallback();
-  }, 1200);
-
   startEl.classList.add("hidden");
   requestWakeLock();
+  void permission.then(watchForSensor);
 });
+
+/** After permission settles, fall back to touch if no readings arrive. */
+function watchForSensor(state: MotionState) {
+  if (state === "denied") {
+    enableFallback("Motion access is off — tap Enable motion, or quit and reopen Safari");
+    return;
+  }
+  setTimeout(() => {
+    if (!sensorActive) enableFallback("No motion sensor — drag or ← → to tilt");
+  }, 1200);
+}
 
 function onOrientation(e: DeviceOrientationEvent) {
   if (e.beta == null) return;
@@ -129,10 +143,18 @@ function onOrientation(e: DeviceOrientationEvent) {
 
 // ---------- fallback controls (desktop / no sensor) ----------
 
-function enableFallback() {
+function enableFallback(message: string) {
+  if (sensorActive) return;
+  hintEl.textContent = message;
+  motionBtn.hidden = !Orientation || typeof Orientation.requestPermission !== "function";
   fallbackEl.hidden = false;
   document.body.classList.add("virtual");
 }
+
+// A second chance at the iOS prompt, from a fresh tap.
+motionBtn.addEventListener("click", () => {
+  void requestMotionPermission().then(watchForSensor);
+});
 
 let dragX: number | null = null;
 const stage = $("stage");

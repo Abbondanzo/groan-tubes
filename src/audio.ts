@@ -34,33 +34,33 @@ export const PRESETS: Preset[] = [
     id: "groan",
     name: "Groan",
     wave: "reed",
-    pitch: [250, 105],
-    f1: [820, 380],
-    f2: [1350, 760],
-    formantQ: 5,
-    vibratoRate: 5.2,
-    vibratoDepth: 0.012,
-    growlRate: 31,
-    growlDepth: 0.35,
-    breath: 0.06,
+    pitch: [205, 122],
+    f1: [720, 420],
+    f2: [1250, 880],
+    formantQ: 3.5,
+    vibratoRate: 4.5,
+    vibratoDepth: 0.002,
+    growlRate: 19,
+    growlDepth: 0.12,
+    breath: 0.05,
     oneWay: false,
-    level: 1.4,
+    level: 1.1,
   },
   {
     id: "moo",
     name: "Moo",
     wave: "reed",
-    pitch: [175, 92],
-    f1: [560, 300],
-    f2: [980, 640],
-    formantQ: 6,
+    pitch: [185, 104],
+    f1: [600, 330],
+    f2: [1050, 700],
+    formantQ: 4,
     vibratoRate: 4,
-    vibratoDepth: 0.008,
-    growlRate: 24,
-    growlDepth: 0.45,
-    breath: 0.05,
+    vibratoDepth: 0.002,
+    growlRate: 16,
+    growlDepth: 0.22,
+    breath: 0.04,
     oneWay: true,
-    level: 1.4,
+    level: 1.1,
   },
   {
     id: "ghost",
@@ -88,8 +88,7 @@ export class GroanVoice {
   private preset: Preset = PRESETS[0];
   private reedWave: PeriodicWave;
 
-  private oscA: OscillatorNode;
-  private oscB: OscillatorNode;
+  private osc: OscillatorNode;
   private vibrato: OscillatorNode;
   private vibratoGain: GainNode;
   private growl: OscillatorNode;
@@ -104,8 +103,9 @@ export class GroanVoice {
   private master: GainNode;
   private noise: AudioBuffer;
 
-  /** Last pitch sent to the oscillators, for the readout. */
+  /** Last pitch sent to the oscillator, for the readout. */
   pitchHz = 0;
+  private jitter = 0;
 
   constructor(ctx: BaseAudioContext) {
     this.ctx = ctx;
@@ -113,16 +113,14 @@ export class GroanVoice {
     this.reedWave = makeReedWave(ctx);
     this.noise = makeNoise(ctx, 2);
 
-    // Reed: two slightly detuned oscillators for a rough, beating tone.
-    this.oscA = ctx.createOscillator();
-    this.oscB = ctx.createOscillator();
+    // Reed: one oscillator. Organic wobble comes from random jitter in update().
+    this.osc = ctx.createOscillator();
 
     // Vibrato drives both oscillators' frequency (in Hz).
     this.vibrato = ctx.createOscillator();
     this.vibratoGain = ctx.createGain();
     this.vibrato.connect(this.vibratoGain);
-    this.vibratoGain.connect(this.oscA.frequency);
-    this.vibratoGain.connect(this.oscB.frequency);
+    this.vibratoGain.connect(this.osc.frequency);
 
     // Growl: fast amplitude flutter, like the reed rattling.
     this.growl = ctx.createOscillator();
@@ -132,12 +130,7 @@ export class GroanVoice {
     this.growl.connect(this.growlGain);
     this.growlGain.connect(this.growlAmp.gain);
 
-    const mixA = ctx.createGain();
-    const mixB = ctx.createGain();
-    mixA.gain.value = 0.6;
-    mixB.gain.value = 0.4;
-    this.oscA.connect(mixA).connect(this.growlAmp);
-    this.oscB.connect(mixB).connect(this.growlAmp);
+    this.osc.connect(this.growlAmp);
 
     // Vowel formants in parallel, plus a lowpassed "body" path for warmth.
     this.f1 = ctx.createBiquadFilter();
@@ -177,22 +170,20 @@ export class GroanVoice {
     comp.knee.value = 12;
     comp.ratio.value = 4;
     this.master = ctx.createGain();
-    this.master.gain.value = 0.9;
+    this.master.gain.value = 0.8;
     this.voice.connect(comp).connect(this.master).connect(ctx.destination);
 
     this.setPreset(this.preset);
 
-    for (const node of [this.oscA, this.oscB, this.vibrato, this.growl]) node.start();
+    for (const node of [this.osc, this.vibrato, this.growl]) node.start();
     breathSrc.start();
   }
 
   setPreset(p: Preset) {
     this.preset = p;
     const now = this.ctx.currentTime;
-    for (const osc of [this.oscA, this.oscB]) {
-      if (p.wave === "reed") osc.setPeriodicWave(this.reedWave);
-      else osc.type = "sine";
-    }
+    if (p.wave === "reed") this.osc.setPeriodicWave(this.reedWave);
+    else this.osc.type = "sine";
     this.vibrato.frequency.setValueAtTime(p.vibratoRate, now);
     this.growl.frequency.setValueAtTime(p.growlRate, now);
     this.growlGain.gain.setValueAtTime(p.growlDepth, now);
@@ -214,8 +205,8 @@ export class GroanVoice {
     const p = this.preset;
     const now = this.ctx.currentTime;
     const t = clamp01(travel);
-    // Ease so the pitch drops faster near the end, like the real thing.
-    const bend = t * t * (3 - 2 * t);
+    // Steady drop that speeds up a little as the weight falls.
+    const bend = Math.pow(t, 1.3);
 
     let level = flow < 0.03 ? 0 : Math.pow(clamp01(flow), 1.25);
     if (p.oneWay && direction < 0) level = 0;
@@ -228,12 +219,13 @@ export class GroanVoice {
       return;
     }
 
+    // Slow random wander, like an uneven reed, instead of a steady vibrato.
+    this.jitter += (Math.random() - 0.5) * 0.004 - this.jitter * 0.08;
     // Faster air pushes the reed slightly sharp.
-    const pitch = lerp(p.pitch[0], p.pitch[1], bend) * (0.93 + 0.12 * flow);
+    const pitch = lerp(p.pitch[0], p.pitch[1], bend) * (0.97 + 0.05 * flow) * (1 + this.jitter);
     this.pitchHz = pitch;
 
-    this.oscA.frequency.setTargetAtTime(pitch, now, 0.03);
-    this.oscB.frequency.setTargetAtTime(pitch * 1.006, now, 0.03);
+    this.osc.frequency.setTargetAtTime(pitch, now, 0.03);
     this.vibratoGain.gain.setTargetAtTime(pitch * p.vibratoDepth, now, 0.1);
 
     const f1 = lerp(p.f1[0], p.f1[1], bend);
@@ -289,14 +281,17 @@ export function createAudioContext(): AudioContext {
   return new Ctx({ latencyHint: "interactive" });
 }
 
-/** Buzzy reed spectrum: rich harmonics, odd ones a touch stronger. */
+/**
+ * Beating-reed spectrum: a narrow pulse train (the reed slapping shut) gives the
+ * nasal, kazoo-like gaps in the harmonics; an extra roll-off keeps it from fizzing.
+ */
 function makeReedWave(ctx: BaseAudioContext): PeriodicWave {
-  const n = 48;
+  const n = 40;
+  const duty = 0.28;
   const real = new Float32Array(n);
   const imag = new Float32Array(n);
   for (let k = 1; k < n; k++) {
-    const odd = k % 2 === 1 ? 1 : 0.6;
-    imag[k] = (odd / Math.pow(k, 0.85)) * (k === 1 ? 0.8 : 1);
+    imag[k] = (Math.abs(Math.sin(Math.PI * k * duty)) / k) * Math.pow(k, -0.25) + 0.02 / k;
   }
   return ctx.createPeriodicWave(real, imag);
 }

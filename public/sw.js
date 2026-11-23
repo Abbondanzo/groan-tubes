@@ -1,6 +1,7 @@
-// Offline support: precache the shell, then stale-while-revalidate everything
-// same-origin. Vite's hashed asset names mean old files never go stale.
-const CACHE = "groan-tubes-v1";
+// Offline support: pages are network-first (so a new deploy shows up on the next
+// open), everything else stale-while-revalidate. Vite's hashed asset names mean old
+// files never go stale.
+const CACHE = "groan-tubes-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -20,9 +21,24 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
 
+  if (req.mode === "navigate") {
+    event.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        try {
+          const res = await fetch(req);
+          if (res.ok) cache.put("./index.html", res.clone());
+          return res;
+        } catch {
+          return (await cache.match("./index.html")) ?? Response.error();
+        }
+      }),
+    );
+    return;
+  }
+
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(req, { ignoreSearch: req.mode === "navigate" });
+      const cached = await cache.match(req);
       const network = fetch(req)
         .then((res) => {
           if (res.ok) cache.put(req, res.clone());
@@ -33,10 +49,7 @@ self.addEventListener("fetch", (event) => {
         event.waitUntil(network);
         return cached;
       }
-      const res = await network;
-      if (res) return res;
-      if (req.mode === "navigate") return (await cache.match("./index.html")) ?? Response.error();
-      return Response.error();
+      return (await network) ?? Response.error();
     }),
   );
 });

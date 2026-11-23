@@ -38,8 +38,11 @@
       <footer>
         <div id="presets" role="radiogroup" aria-label="Sound"></div>
         <div id="fallback" hidden>
-          <span class="hint">No sensor — drag or ← → to tilt</span>
-          <button id="flip" type="button">Flip</button>
+          <span class="hint" id="fallback-hint"></span>
+          <div class="buttons">
+            <button id="enable-motion" type="button" hidden>Enable motion</button>
+            <button id="flip" type="button">Flip</button>
+          </div>
         </div>
       </footer>
 
