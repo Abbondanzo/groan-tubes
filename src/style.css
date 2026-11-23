@@ -80,11 +80,16 @@ body.virtual #stage {
 
 #tube {
   --w: min(30vw, 120px);
+  --puck-hi: #ffd27a;
+  --puck: var(--accent);
+  --puck-lo: #b66a00;
+  --glow-rgb: 245, 165, 36;
   height: 100%;
   max-height: 640px;
   width: var(--w);
   display: grid;
   grid-template-rows: auto 1fr auto;
+  transition: width 0.35s ease;
   will-change: transform;
 }
 body.virtual #tube {
@@ -92,6 +97,7 @@ body.virtual #tube {
 }
 
 .cap {
+  position: relative;
   height: calc(var(--w) * 0.22);
   margin: 0 -6%;
   border-radius: 8px;
@@ -122,11 +128,147 @@ body.virtual #tube {
   width: 78%;
   aspect-ratio: 1 / 0.55;
   border-radius: 40%;
-  background: radial-gradient(circle at 35% 30%, #ffd27a, var(--accent) 45%, #b66a00);
+  background: radial-gradient(circle at 35% 30%, var(--puck-hi), var(--puck) 45%, var(--puck-lo));
   box-shadow:
-    0 0 calc(6px + var(--glow) * 40px) calc(var(--glow) * 10px) rgba(245, 165, 36, calc(0.25 + var(--glow) * 0.6)),
+    0 0 calc(6px + var(--glow) * 40px) calc(var(--glow) * 10px) rgba(var(--glow-rgb), calc(0.25 + var(--glow) * 0.6)),
     inset 0 -3px 0 rgba(0, 0, 0, 0.25);
   will-change: transform;
+}
+
+/* ---------- skins: one look per sound ---------- */
+
+/* Big tube: huge, chunky, cool-toned. */
+body[data-skin="big"] #tube {
+  --w: min(62vw, 250px);
+  --puck-hi: #b8fff2;
+  --puck: #2dd4bf;
+  --puck-lo: #0f766e;
+  --glow-rgb: 45, 212, 191;
+  max-height: none;
+}
+body[data-skin="big"] .cap {
+  height: calc(var(--w) * 0.16);
+  margin: 0 -7%;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 10% 50%, #9a9a9a 0 4px, transparent 5px),
+    radial-gradient(circle at 90% 50%, #9a9a9a 0 4px, transparent 5px),
+    linear-gradient(90deg, #333, #777 35%, #262626);
+}
+body[data-skin="big"] #tube-body {
+  border-left-width: 2px;
+  border-right-width: 2px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 25%, rgba(255, 255, 255, 0.04) 75%, rgba(255, 255, 255, 0.16)),
+    repeating-linear-gradient(
+      -24deg,
+      rgba(45, 212, 191, 0.17) 0 28px,
+      rgba(139, 92, 246, 0.14) 28px 56px,
+      rgba(255, 255, 255, 0.02) 56px 84px
+    );
+}
+body[data-skin="big"] #slider {
+  width: 82%;
+  border-radius: 34%;
+}
+
+/* Moo: a cow. Spotted hide, black head cap with horns and ears, pink muzzle, cowbell. */
+body[data-skin="moo"] #tube {
+  --puck-hi: #fff1b8;
+  --puck: #d4a017;
+  --puck-lo: #7a5a00;
+  --glow-rgb: 212, 160, 23;
+  height: calc(100% - 26px);
+  margin-top: 26px;
+}
+body[data-skin="moo"] #tube-body {
+  border-color: rgba(0, 0, 0, 0.35);
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18), rgba(255, 255, 255, 0) 30%, rgba(255, 255, 255, 0) 70%, rgba(0, 0, 0, 0.22)),
+    /* Each spot is two overlapping blobs so it reads as irregular, kept inside its
+       240px tile so the repeat never slices one flat. */
+    radial-gradient(ellipse 30% 8% at 24% 14%, #161616 96%, transparent 100%),
+    radial-gradient(ellipse 18% 6% at 40% 19%, #161616 96%, transparent 100%),
+    radial-gradient(ellipse 22% 7% at 84% 32%, #161616 96%, transparent 100%),
+    radial-gradient(ellipse 36% 9% at 60% 50%, #161616 96%, transparent 100%),
+    radial-gradient(ellipse 20% 7% at 44% 56%, #161616 96%, transparent 100%),
+    radial-gradient(ellipse 20% 6% at 12% 70%, #161616 96%, transparent 100%),
+    radial-gradient(ellipse 28% 8% at 76% 83%, #161616 96%, transparent 100%),
+    radial-gradient(ellipse 14% 5% at 64% 88%, #161616 96%, transparent 100%),
+    #f3eee4;
+  background-size: 100% 100%, 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 240px, 100% 240px,
+    100% 240px, 100% 240px, auto;
+}
+body[data-skin="moo"] .cap.top {
+  border-radius: 40% 40% 10px 10px;
+  background: linear-gradient(90deg, #111, #3a3a3a 35%, #0c0c0c);
+}
+/* Horns */
+body[data-skin="moo"] .cap.top::before,
+body[data-skin="moo"] .cap.top::after {
+  content: "";
+  position: absolute;
+  top: -22px;
+  width: 16%;
+  height: 26px;
+  background: linear-gradient(180deg, #fffaf0, #d8ccb4);
+  border-radius: 50% 50% 20% 20% / 80% 80% 20% 20%;
+}
+body[data-skin="moo"] .cap.top::before {
+  left: 10%;
+  transform: rotate(-24deg);
+}
+body[data-skin="moo"] .cap.top::after {
+  right: 10%;
+  transform: rotate(24deg);
+}
+/* Ears: drawn on the tube itself so they sit beside the head cap. */
+body[data-skin="moo"] #tube::before,
+body[data-skin="moo"] #tube::after {
+  content: "";
+  position: absolute;
+  width: calc(var(--w) * 0.34);
+  height: calc(var(--w) * 0.16);
+  margin-top: calc(var(--w) * 0.02);
+  background: radial-gradient(ellipse at 50% 50%, #f4a6b8 40%, #1a1a1a 44%);
+  border-radius: 50%;
+}
+body[data-skin="moo"] #tube {
+  position: relative;
+}
+body[data-skin="moo"] #tube::before {
+  left: calc(var(--w) * -0.3);
+  transform: rotate(18deg);
+}
+body[data-skin="moo"] #tube::after {
+  right: calc(var(--w) * -0.3);
+  transform: rotate(-18deg);
+}
+/* Muzzle with nostrils */
+body[data-skin="moo"] .cap.bottom {
+  height: calc(var(--w) * 0.34);
+  border-radius: 10px 10px 45% 45%;
+  background:
+    radial-gradient(ellipse 9% 16% at 32% 52%, #8a3a4c 92%, transparent 100%),
+    radial-gradient(ellipse 9% 16% at 68% 52%, #8a3a4c 92%, transparent 100%),
+    linear-gradient(180deg, #f7b6c4, #e48ca2);
+  box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35);
+}
+/* Cowbell */
+body[data-skin="moo"] #slider {
+  width: 52%;
+  aspect-ratio: 1 / 0.8;
+  border-radius: 38% 38% 18% 18% / 50% 50% 14% 14%;
+}
+
+/* Rotate mode (no motion sensor): the tube spins on screen, so keep it within a square. */
+body.virtual[data-skin="moo"] #tube {
+  height: min(calc(100% - 26px), 66vmin);
+  margin-top: 0;
+}
+body.virtual[data-skin="big"] #tube {
+  --w: min(46vmin, 220px);
+  height: min(100%, 82vmin);
 }
 
 /* ---------- footer ---------- */

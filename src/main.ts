@@ -49,6 +49,7 @@ function loadPreset(): Preset {
 }
 
 function renderPresets() {
+  document.body.dataset.skin = preset.id;
   presetsEl.replaceChildren(
     ...PRESETS.map((p) => {
       const b = document.createElement("button");
