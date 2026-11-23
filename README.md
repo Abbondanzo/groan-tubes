@@ -23,7 +23,7 @@ use **Add to Home Screen** to install it.
   the column grows, so the resonances fall, the pitch sags and the sound is a little
   quieter: the same asymmetry a real tube has.
 - **Sounds.** *Groan* (a standard 40 cm tube), *Big tube* (longer and lower) and
-  *Moo* (sounds on the first flip only, like a moo can).
+  *Moo* (lower and darker, sagging in pitch both ways).
 - **PWA.** Manifest, offline service worker, portrait lock, screen wake lock while
   open.
 

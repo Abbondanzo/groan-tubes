@@ -67,8 +67,7 @@ export const PRESETS: Preset[] = [
     damping: 0.45,
     rolloff: 0.9,
     level: 1.2,
-    // A moo can only sounds one way.
-    reverse: { pitch: 1, level: 0 },
+    reverse: { pitch: 0.95, level: 0.9 },
     drift: -0.12,
   },
 ];
@@ -194,7 +193,8 @@ export class GroanVoice {
     this.jitter += (Math.random() - 0.5) * 0.002 - this.jitter * 0.1;
     const pitch =
       p.pitch *
-      (reverse ? p.reverse.pitch * (1 - p.drift * t) : 1 + p.drift * t) *
+      // Flipping back always sags; a moo (negative drift) sags both ways.
+      (reverse ? p.reverse.pitch * (1 - Math.abs(p.drift) * t) : 1 + p.drift * t) *
       (0.98 + 0.02 * flow) *
       (1 + this.jitter);
     this.pitchHz = pitch;
