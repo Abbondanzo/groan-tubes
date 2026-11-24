@@ -1,6 +1,8 @@
 import "./style.css";
 import { GroanVoice, PRESETS, createAudioContext, type Preset } from "./audio";
-import { Slider } from "./physics";
+import { Slider, TERMINAL_SPEED } from "./physics";
+import { Stats } from "./stats";
+import { mountStatsView } from "./stats-view";
 
 type PermissionFn = () => Promise<"granted" | "denied">;
 type OrientationCtor = typeof DeviceOrientationEvent & { requestPermission?: PermissionFn };
@@ -23,6 +25,9 @@ const rPitch = $("r-pitch");
 const diagEl = $("diag");
 
 const STORAGE_KEY = "groan-tubes:preset";
+const stats = new Stats();
+const statsView = mountStatsView(stats, PRESETS);
+document.querySelector("footer")!.prepend(statsView.strip);
 const slider = new Slider();
 let voice: GroanVoice | null = null;
 let audio: AudioContext | null = null;
@@ -229,9 +234,18 @@ function frame(now: number) {
     voice.update(slider.flow, slider.travel, slider.direction);
     if (impact > 0.2) {
       voice.thunk(impact);
+      stats.impact(impact * TERMINAL_SPEED * preset.tube);
       navigator.vibrate?.(Math.round(10 + impact * 25));
     }
   }
+  // Only count while the app is actually running (after Tap to start).
+  stats.tick(
+    dt,
+    now / 1000,
+    !!voice && voice.pitchHz > 0,
+    voice ? Math.abs(slider.vel) * dt * preset.tube : 0,
+    preset.id,
+  );
 
   render(now);
   requestAnimationFrame(frame);
@@ -253,6 +267,7 @@ function render(now: number) {
     rTilt.textContent = `${tilt >= 0 ? "+" : "−"}${Math.abs(tilt).toFixed(0)}°`;
     rFlow.textContent = `${Math.round(slider.flow * 100)}%`;
     rPitch.textContent = voice && voice.pitchHz > 0 ? `${voice.pitchHz.toFixed(0)} Hz` : "—";
+    statsView.update();
   }
 }
 
@@ -320,9 +335,15 @@ function stopAudio() {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stopAudio();
+  if (document.hidden) {
+    stopAudio();
+    stats.save();
+  }
 });
-window.addEventListener("pagehide", stopAudio);
+window.addEventListener("pagehide", () => {
+  stopAudio();
+  stats.save();
+});
 document.addEventListener("freeze", stopAudio);
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
