@@ -19,7 +19,11 @@ const TILES: Tile[] = [
   { key: "since", label: "Groaning since", value: (s) => formatSince(s.data.since) },
 ];
 
-export function mountStatsView(stats: Stats, presets: Preset[]) {
+/**
+ * @param presets every preset that could have stats, seasonal ones included
+ * @param available presets on offer right now; others only show a bar once used
+ */
+export function mountStatsView(stats: Stats, presets: Preset[], available: () => Preset[]) {
   const strip = el("button", "stats-strip");
   strip.type = "button";
   strip.id = "stats-open";
@@ -74,7 +78,7 @@ export function mountStatsView(stats: Stats, presets: Preset[]) {
     const count = el("span", "bar-count");
     row.append(name, track, count);
     bars.append(row);
-    return { id: p.id, fill, count };
+    return { id: p.id, row, fill, count };
   });
 
   // Two taps to reset, so a stray tap can't wipe everything.
@@ -132,8 +136,10 @@ export function mountStatsView(stats: Stats, presets: Preset[]) {
     for (const t of TILES) values.get(t.key)!.textContent = t.value(stats);
     fact.textContent = distanceFact(d.distance);
     const max = Math.max(1, ...presets.map((p) => d.byPreset[p.id] ?? 0));
+    const shown = new Set(available().map((p) => p.id));
     for (const b of barEls) {
       const n = d.byPreset[b.id] ?? 0;
+      b.row.hidden = n === 0 && !shown.has(b.id);
       b.fill.style.width = `${(n / max) * 100}%`;
       b.count.textContent = n.toLocaleString();
     }
