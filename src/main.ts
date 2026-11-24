@@ -147,7 +147,7 @@ function watchForSensor(state: MotionState) {
     return;
   }
   setTimeout(() => {
-    if (!sensorActive) enableFallback("No motion sensor — drag or ← → to tilt");
+    if (!sensorActive) enableFallback("No motion sensor — drag the tube around to turn it, or use ← →");
   }, 1200);
 }
 
@@ -176,20 +176,46 @@ motionBtn.addEventListener("click", () => {
   void requestMotionPermission().then(watchForSensor);
 });
 
-let dragX: number | null = null;
+// Drag to turn the tube like a dial: it follows the pointer's angle around the tube's
+// centre, so any direction of drag works (issue #1: only left/right used to register).
+/** Within this distance of the centre the angle is too jumpy to follow. */
+const DRAG_DEADZONE_PX = 24;
+let drag: { cx: number; cy: number; angle: number | null } | null = null;
 const stage = $("stage");
+
+function pointerAngle(e: PointerEvent, cx: number, cy: number): number | null {
+  const dx = e.clientX - cx;
+  const dy = e.clientY - cy;
+  if (Math.hypot(dx, dy) < DRAG_DEADZONE_PX) return null;
+  return (Math.atan2(dy, dx) * 180) / Math.PI;
+}
+
 stage.addEventListener("pointerdown", (e) => {
   if (sensorActive) return;
-  dragX = e.clientX;
+  // The tube rotates about its centre, which stays put whatever its angle.
+  const r = tubeEl.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+  drag = { cx, cy, angle: pointerAngle(e, cx, cy) };
+  flipAnim = null;
   stage.setPointerCapture(e.pointerId);
+  stage.classList.add("dragging");
 });
 stage.addEventListener("pointermove", (e) => {
-  if (dragX == null) return;
-  virtualAngle += (e.clientX - dragX) * 0.6;
-  dragX = e.clientX;
-  flipAnim = null;
+  if (!drag) return;
+  const angle = pointerAngle(e, drag.cx, drag.cy);
+  if (angle !== null && drag.angle !== null) {
+    let delta = angle - drag.angle;
+    if (delta > 180) delta -= 360; // take the short way across ±180°
+    else if (delta < -180) delta += 360;
+    virtualAngle += delta;
+  }
+  drag.angle = angle;
 });
-const endDrag = () => (dragX = null);
+const endDrag = () => {
+  drag = null;
+  stage.classList.remove("dragging");
+};
 stage.addEventListener("pointerup", endDrag);
 stage.addEventListener("pointercancel", endDrag);
 
