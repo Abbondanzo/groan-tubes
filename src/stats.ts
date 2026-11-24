@@ -3,6 +3,9 @@
 const KEY = "groan-tubes:stats";
 /** A sound has to last this long to count as a groan (filters out tiny tilts). */
 const MIN_GROAN_S = 0.25;
+/** Groan counts worth celebrating, smallest first. */
+export const MILESTONES = [100, 1000, 10000] as const;
+export type Milestone = (typeof MILESTONES)[number];
 
 export interface StatsData {
   version: 1;
@@ -45,6 +48,8 @@ export class Stats {
   private recent: number[] = []; // timestamps (s) of groans in the last minute
   private dirty = false;
   private lastSave = 0;
+  /** Called when a groan brings the total to exactly a milestone. */
+  onMilestone?: (n: Milestone) => void;
 
   constructor() {
     this.data = load();
@@ -94,6 +99,12 @@ export class Stats {
     while (this.recent.length && now - this.recent[0] > 60) this.recent.shift();
     if (this.recent.length > d.bestMinute) d.bestMinute = this.recent.length;
     this.dirty = true;
+
+    const hit = MILESTONES.find((m) => m === d.groans);
+    if (hit) {
+      this.save(now); // don't lose a milestone groan to a crash or a closed tab
+      this.onMilestone?.(hit);
+    }
   }
 
   /** Groans counted today (rolls over at local midnight). */

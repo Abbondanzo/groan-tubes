@@ -93,7 +93,10 @@ export function chipLabel(p: Preset): string {
  * Install `window.groanTubes` for unlocking from the console.
  * @param onChange called after an unlock or lock so the UI can redraw its buttons
  */
-export function installConsoleApi(onChange: () => void) {
+export function installConsoleApi(
+  onChange: () => void,
+  extra: { help: string[]; methods: Record<string, (...args: never[]) => unknown> } = { help: [], methods: {} },
+) {
   const ids = SEASONAL.map((p) => p.id);
   const pick = (id: string): string[] | null => {
     if (id === "all") return ids;
@@ -115,6 +118,7 @@ export function installConsoleApi(onChange: () => void) {
           '  groanTubes.unlock("ghost" | "santa" | "all")',
           '  groanTubes.lock("ghost" | "santa" | "all")',
           "  groanTubes.list()",
+          ...extra.help,
         ].join("\n"),
       );
     },
@@ -137,6 +141,7 @@ export function installConsoleApi(onChange: () => void) {
     list() {
       return availablePresets().map((p) => p.id);
     },
+    ...extra.methods,
   };
 
   (window as unknown as { groanTubes: typeof api }).groanTubes = api;

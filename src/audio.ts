@@ -281,6 +281,43 @@ export class GroanVoice {
     }
   }
 
+  /**
+   * A short brassy fanfare for milestones; bigger tiers play longer and fuller.
+   * @param tier 0, 1 or 2 (100, 1,000, 10,000 groans)
+   */
+  fanfare(tier: number) {
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime + 0.05;
+    // Semitones above the root: a rising arpeggio, then a held major chord.
+    const runs = [
+      { arp: [0, 4, 7], chord: [0, 4, 7, 12], hold: 0.35 },
+      { arp: [0, 4, 7, 12], chord: [0, 4, 7, 12, 16], hold: 0.6 },
+      { arp: [0, 4, 7, 12, 16, 19], chord: [-12, 0, 4, 7, 12, 16, 19], hold: 1.1 },
+    ];
+    const { arp, chord, hold } = runs[Math.max(0, Math.min(2, tier))];
+    const root = 349.23; // F4
+    const step = 0.09;
+    const voice = (semi: number, start: number, dur: number, gain: number) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.value = root * Math.pow(2, semi / 12);
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 2600;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(gain, start + 0.015);
+      g.gain.setValueAtTime(gain, start + dur * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(lp).connect(g).connect(this.master);
+      osc.start(start);
+      osc.stop(start + dur + 0.02);
+    };
+    arp.forEach((semi, i) => voice(semi, t0 + i * step, step * 1.6, 0.07));
+    const chordAt = t0 + arp.length * step;
+    chord.forEach((semi) => voice(semi, chordAt, hold, 0.05));
+  }
+
   /** Cut the sound instantly and unhook it from the speakers. */
   kill() {
     const now = this.ctx.currentTime;

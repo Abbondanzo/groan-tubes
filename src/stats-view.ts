@@ -1,6 +1,8 @@
 // The stats strip on the main screen, and the full-size stats sheet it opens.
 import type { Preset } from "./audio";
-import { Stats, distanceFact, formatDistance, formatDuration, formatSince } from "./stats";
+import { MILESTONES, Stats, distanceFact, formatDistance, formatDuration, formatSince } from "./stats";
+
+const BADGE_EMOJI = ["💯", "🎉", "🏆"];
 
 interface Tile {
   key: string;
@@ -65,6 +67,20 @@ export function mountStatsView(stats: Stats, presets: Preset[], available: () =>
 
   const fact = el("p", "fact");
 
+  const badgesTitle = el("h3", "label");
+  badgesTitle.textContent = "Milestones";
+  const badges = el("div", "badges");
+  const badgeEls = MILESTONES.map((n, i) => {
+    const b = el("div", "badge");
+    const icon = el("span", "badge-icon");
+    icon.textContent = BADGE_EMOJI[i];
+    const label = el("span", "badge-label");
+    label.textContent = n.toLocaleString();
+    b.append(icon, label);
+    badges.append(b);
+    return { n, b };
+  });
+
   const barsTitle = el("h3", "label");
   barsTitle.textContent = "By sound";
   const bars = el("div", "bars");
@@ -104,7 +120,7 @@ export function mountStatsView(stats: Stats, presets: Preset[], available: () =>
     }
   });
 
-  panel.append(head, tiles, fact, barsTitle, bars, reset);
+  panel.append(head, tiles, fact, badgesTitle, badges, barsTitle, bars, reset);
   sheet.append(panel);
   document.getElementById("app")!.append(sheet);
 
@@ -135,6 +151,11 @@ export function mountStatsView(stats: Stats, presets: Preset[], available: () =>
     if (sheet.hidden) return;
     for (const t of TILES) values.get(t.key)!.textContent = t.value(stats);
     fact.textContent = distanceFact(d.distance);
+    for (const { n, b } of badgeEls) {
+      const earned = d.groans >= n;
+      b.classList.toggle("earned", earned);
+      b.title = earned ? `${n.toLocaleString()} groans: earned` : `${(n - d.groans).toLocaleString()} groans to go`;
+    }
     const max = Math.max(1, ...presets.map((p) => d.byPreset[p.id] ?? 0));
     const shown = new Set(available().map((p) => p.id));
     for (const b of barEls) {

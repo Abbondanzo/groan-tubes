@@ -2,7 +2,8 @@ import "./style.css";
 import { GroanVoice, PRESETS, createAudioContext, type Preset } from "./audio";
 import { Slider, TERMINAL_SPEED } from "./physics";
 import { SEASONAL, availablePresets, chipLabel, installConsoleApi } from "./seasonal";
-import { Stats } from "./stats";
+import { celebrate } from "./celebrate";
+import { MILESTONES, Stats, type Milestone } from "./stats";
 import { mountStatsView } from "./stats-view";
 
 type PermissionFn = () => Promise<"granted" | "denied">;
@@ -28,6 +29,8 @@ const diagEl = $("diag");
 const STORAGE_KEY = "groan-tubes:preset";
 const stats = new Stats();
 const statsView = mountStatsView(stats, [...PRESETS, ...SEASONAL], () => availablePresets());
+const party = (n: Milestone) => celebrate(n, voice ? (tier) => voice?.fanfare(tier) : undefined);
+stats.onMilestone = party;
 document.querySelector("footer")!.prepend(statsView.strip);
 const slider = new Slider();
 let voice: GroanVoice | null = null;
@@ -87,10 +90,23 @@ function renderPresets() {
   );
 }
 renderPresets();
-installConsoleApi(() => {
-  renderPresets();
-  statsView.update();
-});
+installConsoleApi(
+  () => {
+    renderPresets();
+    statsView.update();
+  },
+  {
+    help: ["", "  groanTubes.celebrate(100 | 1000 | 10000)   preview a milestone"],
+    methods: {
+      celebrate(n: number = 100) {
+        const m = MILESTONES.find((x) => x === n);
+        if (!m) return `Milestones are ${MILESTONES.join(", ")}.`;
+        party(m);
+        return `🎉 ${m.toLocaleString()}`;
+      },
+    },
+  },
+);
 
 // ---------- start / permissions ----------
 
