@@ -1,0 +1,37 @@
+name: Deploy PR preview
+
+# Each PR from a branch in this repo gets a live preview at
+#   https://abbondanzo.github.io/groan-tubes/pr-preview/pr-<number>/
+# and a sticky comment with the link. Closing or merging the PR removes it.
+# Fork PRs are skipped: their token can't write to gh-pages.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency: preview-${{ github.ref }}
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        if: github.event.action != 'closed'
+      - uses: actions/setup-node@v4
+        if: github.event.action != 'closed'
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile && pnpm build
+        if: github.event.action != 'closed'
+      - uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: dist
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview

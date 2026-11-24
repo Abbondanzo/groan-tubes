@@ -50,9 +50,14 @@ Motion sensors only work over HTTPS (or `localhost`).
 
 ## Deploy
 
-Every push to `main` builds and deploys to GitHub Pages through
-`.github/workflows/deploy.yml`. The build uses a relative base path, so `dist/`
-also works as-is on Cloudflare Pages or any other static host.
+Changes go through pull requests. Each PR gets a live preview at
+`https://abbondanzo.github.io/groan-tubes/pr-preview/pr-<number>/`, linked in a PR
+comment, and merging to `main` deploys production. Both are published to the
+`gh-pages` branch. Commits and PR titles follow Conventional Commits, checked in CI.
+See [AGENTS.md](AGENTS.md) for the full workflow.
+
+The build uses a relative base path, so `dist/` also works as-is on Cloudflare Pages
+or any other static host.
 
 ## License
 
