@@ -14,6 +14,8 @@ const SPEED_OF_SOUND = 343;
 const TABLE_SIZE = 2048;
 const BUF_SIZE = 8192; // > max round trip at 96 kHz for a 2 m tube
 const BUF_MASK = BUF_SIZE - 1;
+/** Seconds without a heartbeat before the voice mutes itself. */
+const HEARTBEAT_TIMEOUT = 0.2;
 
 class GroanProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -41,8 +43,14 @@ class GroanProcessor extends AudioWorkletProcessor {
     this.phase = 0;
     this.lp = 0;
     this.alive = true;
+    // Watchdog: the main thread sends a heartbeat every frame. If they stop (phone
+    // locked, app backgrounded, page frozen), mute within HEARTBEAT_TIMEOUT instead of
+    // droning on until iOS freezes the audio mid-groan.
+    this.lastBeat = currentTime;
+    this.gate = 1;
     this.port.onmessage = (e) => {
-      if (e.data === "stop") this.alive = false;
+      if (e.data === "beat") this.lastBeat = currentTime;
+      else if (e.data === "stop") this.alive = false;
       else if (e.data && e.data.harmonics) this.buildTable(e.data.harmonics);
     };
   }
@@ -75,6 +83,10 @@ class GroanProcessor extends AudioWorkletProcessor {
     // Resonant peaks reach 1 / (1 - |fb|); scale back so the level stays put.
     const norm = 1 - Math.abs(fb);
 
+    const gateTarget = currentTime - this.lastBeat < HEARTBEAT_TIMEOUT ? 1 : 0;
+    const gateStep = 1 - Math.exp(-1 / (0.005 * sr)); // ~5 ms fade
+    let gate = this.gate;
+
     let phase = this.phase;
     let w = this.write;
     let lp = this.lp;
@@ -106,12 +118,14 @@ class GroanProcessor extends AudioWorkletProcessor {
       buf[w] = y;
       w = (w + 1) & BUF_MASK;
 
-      ch0[i] = y * norm;
+      gate += (gateTarget - gate) * gateStep;
+      ch0[i] = y * norm * gate;
     }
 
     this.phase = phase;
     this.write = w;
     this.lp = lp;
+    this.gate = gate;
     for (let c = 1; c < out.length; c++) out[c].set(ch0);
     return this.alive;
   }

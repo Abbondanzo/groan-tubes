@@ -159,6 +159,11 @@ export class GroanVoice {
     return this.preset;
   }
 
+  /** Call every frame; if these stop arriving the worklet mutes itself. */
+  heartbeat() {
+    this.node.port.postMessage("beat");
+  }
+
   /** Correct for a device that plays faster or slower than its nominal sample rate. */
   setPlaybackRate(ratio: number) {
     this.node.parameters.get("rate")!.setValueAtTime(ratio, this.ctx.currentTime);
