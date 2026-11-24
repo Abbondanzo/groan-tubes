@@ -677,3 +677,102 @@ button:focus-visible {
   color: #ff6b6b;
   border-color: #ff6b6b;
 }
+
+/* ---------- milestones ---------- */
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 15;
+  pointer-events: none;
+}
+
+.milestone-banner {
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top) + 86px);
+  z-index: 16;
+  padding: 12px 20px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-wrap: balance;
+  white-space: pre-line;
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(245, 165, 36, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -16px) scale(0.9);
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+}
+.milestone-banner.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+  animation: banner-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.milestone-banner.big {
+  font-size: 22px;
+  border-radius: 22px;
+  color: #3a2a00;
+  background: linear-gradient(90deg, #fde68a, #facc15, #f5a524, #facc15, #fde68a);
+  background-size: 200% 100%;
+  animation:
+    banner-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1),
+    banner-shine 2s linear infinite;
+}
+@keyframes banner-pop {
+  from {
+    transform: translate(-50%, -16px) scale(0.6);
+  }
+}
+@keyframes banner-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .milestone-banner,
+  .milestone-banner.show,
+  .milestone-banner.big {
+    animation: none;
+    transition: opacity 0.2s;
+  }
+}
+
+.badges {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  background: var(--panel);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.badge.earned {
+  opacity: 1;
+  filter: none;
+  border: 1px solid var(--accent);
+}
+.badge-icon {
+  font-size: 24px;
+}
+.badge-label {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
