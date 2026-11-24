@@ -15,6 +15,7 @@ time. It's Vite + TypeScript with no framework, deployed to GitHub Pages.
 | `src/audio.ts` | Presets and the voice that drives the model from the weight |
 | `src/groan-processor.js` | AudioWorklet: reed wavetable into a waveguide tube |
 | `src/seasonal.ts` | Seasonal easter-egg sounds (Ghost, Santa) and the `groanTubes` console API |
+| `src/celebrate.ts` | Milestone celebrations (confetti canvas, banner) |
 | `src/stats.ts`, `src/stats-view.ts` | Lifetime stats (localStorage) and the stats strip and sheet |
 | `src/style.css` | Layout and the per-sound tube skins (`body[data-skin=…]`) |
 | `public/` | Manifest, service worker, icons, `.nojekyll` |
@@ -91,7 +92,13 @@ groanTubes.lock("all")
 groanTubes.list()
 ```
 
-To add one, add an entry to `SEASONAL` in `src/seasonal.ts` (dates, emoji, preset
+**Milestones:** reaching 100, 1,000 and 10,000 groans (`MILESTONES` in `src/stats.ts`)
+sets off a celebration once, as the groan that hits it ends. Each tier is bigger:
+confetti, a banner, a fanfare (`GroanVoice.fanfare`) and vibration. Under
+`prefers-reduced-motion` only the banner shows. The stats sheet shows the badges.
+Preview any tier with `groanTubes.celebrate(100 | 1000 | 10000)`.
+
+To add a seasonal sound, add an entry to `SEASONAL` in `src/seasonal.ts` (dates, emoji, preset
 values), a `body[data-skin="<id>"]` skin and a `.bar-<id>` colour in `src/style.css`.
 Render it offline to check its level against Groan (RMS around 0.07–0.1).
 
