@@ -105,14 +105,16 @@ startBtn.addEventListener("click", () => {
   startBtn.disabled = true;
   const permission = requestMotionPermission(); // first, while the tap is still live
 
-  // iOS: let Web Audio play even when the ringer switch is on silent.
-  const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
-  if (session) session.type = "playback";
+  // iOS: let Web Audio play even when the ringer switch is on silent. This also makes
+  // iOS treat the page as a media player (lock-screen controls, background audio),
+  // which is why stopAudio() hands the session back as soon as we're not in use.
+  setAudioSession("playback");
 
   let ctx: AudioContext;
   try {
     ctx = audio = createAudioContext();
     void ctx.resume(); // inside the tap, so iOS unlocks audio
+    watchForInterruption(ctx);
   } catch (err) {
     startNote.textContent = "Couldn't start audio on this device.";
     startBtn.disabled = false;
@@ -214,8 +216,12 @@ let last = 0;
 let lastReadout = 0;
 
 function frame(now: number) {
+  // A long gap between frames means the page was frozen or the screen was off (iOS
+  // doesn't always send visibilitychange on lock while audio plays). Start over.
+  if (now - last > 1000) stopAudio();
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  voice?.heartbeat();
 
   if (flipAnim) {
     const t = Math.min(1, (now - flipAnim.t0) / 380);
@@ -314,6 +320,38 @@ function measureClock(ctx: AudioContext, v: GroanVoice) {
   setTimeout(tick, 250);
 }
 
+function setAudioSession(type: "playback" | "auto") {
+  const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+  if (session) session.type = type;
+}
+
+/**
+ * Anything outside the app that stops the context (lock-screen or Control Center
+ * pause, a call, Siri) leaves it "suspended" or iOS's "interrupted", and it won't come
+ * back on its own. Tear down instead, so the next tap builds a fresh context.
+ */
+let audioStarted = false; // the current context has reached "running" at least once
+
+function watchForInterruption(ctx: AudioContext) {
+  audioStarted = false;
+  ctx.addEventListener("statechange", () => {
+    if (audio !== ctx) return;
+    if (ctx.state === "running") audioStarted = true;
+    else if (audioStarted) stopAudio();
+  });
+}
+
+// Lock-screen / Control Center buttons act on the app, not a stuck context.
+if ("mediaSession" in navigator) {
+  for (const action of ["pause", "stop"] as const) {
+    try {
+      navigator.mediaSession.setActionHandler(action, () => stopAudio());
+    } catch {
+      /* action not supported */
+    }
+  }
+}
+
 /**
  * Tear audio down completely whenever the page is hidden, backgrounded or unloaded.
  * Only suspending the context mid-groan froze the voice at full volume, and iOS can
@@ -326,6 +364,8 @@ function stopAudio() {
   void audio.close().catch(() => {});
   audio = null;
   voice = null;
+  setAudioSession("auto");
+  if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "none";
   void wakeLock?.release().catch(() => {});
   wakeLock = null;
 
@@ -340,6 +380,17 @@ document.addEventListener("visibilitychange", () => {
     stats.save();
   }
 });
+// Back from the lock screen, another app or the back/forward cache: if the context
+// didn't survive, offer Tap to resume rather than staying silently broken.
+const checkAudioAlive = () => {
+  if (audio && audioStarted && audio.state !== "running") stopAudio();
+};
+window.addEventListener("pageshow", checkAudioAlive);
+window.addEventListener("focus", checkAudioAlive);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) checkAudioAlive();
+});
+
 window.addEventListener("pagehide", () => {
   stopAudio();
   stats.save();
