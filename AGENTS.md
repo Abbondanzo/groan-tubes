@@ -78,9 +78,16 @@ with each other.
   the prompt.
 - **iOS audio unlock.** Create the `AudioContext` and call `resume()` inside that same
   tap.
-- **Audio when hidden.** On `visibilitychange` (hidden), `pagehide` and `freeze`, the
-  app fully tears audio down: gain to 0, disconnect, close the context. Suspending only
-  froze the voice at full volume. Coming back requires a tap.
+- **Audio when hidden or locked.** On `visibilitychange` (hidden), `pagehide` and
+  `freeze`, the app fully tears audio down: gain to 0, disconnect, close the context.
+  Suspending only froze the voice at full volume. Coming back requires a tap. iOS
+  doesn't reliably send these on lock while audio plays (the `playback` audio session
+  makes it a media player), so there are backstops:
+  - The worklet mutes itself if the per-frame `heartbeat()` stops for 0.2 s.
+  - A frame gap over 1 s tears audio down.
+  - Any outside pause (media controls, calls) shows up as a context `statechange`,
+    and it tears audio down too.
+  - The audio session goes back to `auto` whenever the app isn't playing.
 - **Off-rate audio clocks.** Some iPhones play a context slower than its `sampleRate`
   says, which drops the pitch. `measureClock()` compares the audio clock with the wall
   clock and corrects it through the worklet's `rate` param. Keep that in place.
