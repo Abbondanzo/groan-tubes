@@ -14,6 +14,7 @@ time. It's Vite + TypeScript with no framework, deployed to GitHub Pages.
 | `src/physics.ts` | The sliding weight (stiction, terminal speed, end-cap impacts) |
 | `src/audio.ts` | Presets and the voice that drives the model from the weight |
 | `src/groan-processor.js` | AudioWorklet: reed wavetable into a waveguide tube |
+| `src/stats.ts`, `src/stats-view.ts` | Lifetime stats (localStorage) and the stats strip and sheet |
 | `src/style.css` | Layout and the per-sound tube skins (`body[data-skin=…]`) |
 | `public/` | Manifest, service worker, icons, `.nojekyll` |
 | `.github/workflows/` | Production deploy, PR previews, commit checks |
