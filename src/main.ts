@@ -1,6 +1,7 @@
 import "./style.css";
 import { GroanVoice, PRESETS, createAudioContext, type Preset } from "./audio";
 import { Slider, TERMINAL_SPEED } from "./physics";
+import { SEASONAL, availablePresets, chipLabel, installConsoleApi } from "./seasonal";
 import { Stats } from "./stats";
 import { mountStatsView } from "./stats-view";
 
@@ -26,7 +27,7 @@ const diagEl = $("diag");
 
 const STORAGE_KEY = "groan-tubes:preset";
 const stats = new Stats();
-const statsView = mountStatsView(stats, PRESETS);
+const statsView = mountStatsView(stats, [...PRESETS, ...SEASONAL], () => availablePresets());
 document.querySelector("footer")!.prepend(statsView.strip);
 const slider = new Slider();
 let voice: GroanVoice | null = null;
@@ -45,22 +46,30 @@ let flipAnim: { from: number; to: number; t0: number } | null = null;
 // ---------- presets ----------
 
 function loadPreset(): Preset {
+  // A seasonal sound saved yesterday may be out of season (and locked) today.
+  const options = availablePresets();
   try {
     const id = localStorage.getItem(STORAGE_KEY);
-    return PRESETS.find((p) => p.id === id) ?? PRESETS[0];
+    return options.find((p) => p.id === id) ?? options[0];
   } catch {
-    return PRESETS[0];
+    return options[0];
   }
 }
 
 function renderPresets() {
+  const options = availablePresets();
+  if (!options.some((p) => p.id === preset.id)) {
+    preset = options[0];
+    voice?.setPreset(preset);
+  }
   document.body.dataset.skin = preset.id;
+  presetsEl.classList.toggle("many", options.length > 3);
   presetsEl.replaceChildren(
-    ...PRESETS.map((p) => {
+    ...options.map((p) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "chip";
-      b.textContent = p.name;
+      b.textContent = chipLabel(p);
       b.setAttribute("role", "radio");
       b.setAttribute("aria-checked", String(p.id === preset.id));
       b.addEventListener("click", () => {
@@ -78,6 +87,10 @@ function renderPresets() {
   );
 }
 renderPresets();
+installConsoleApi(() => {
+  renderPresets();
+  statsView.update();
+});
 
 // ---------- start / permissions ----------
 

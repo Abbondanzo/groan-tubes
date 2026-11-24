@@ -14,6 +14,7 @@ time. It's Vite + TypeScript with no framework, deployed to GitHub Pages.
 | `src/physics.ts` | The sliding weight (stiction, terminal speed, end-cap impacts) |
 | `src/audio.ts` | Presets and the voice that drives the model from the weight |
 | `src/groan-processor.js` | AudioWorklet: reed wavetable into a waveguide tube |
+| `src/seasonal.ts` | Seasonal easter-egg sounds (Ghost, Santa) and the `groanTubes` console API |
 | `src/stats.ts`, `src/stats-view.ts` | Lifetime stats (localStorage) and the stats strip and sheet |
 | `src/style.css` | Layout and the per-sound tube skins (`body[data-skin=…]`) |
 | `public/` | Manifest, service worker, icons, `.nojekyll` |
@@ -70,6 +71,29 @@ docs: document the release workflow
 `conventional-commits.yml` checks every PR title and every commit on the branch, using
 `commitlint.config.mjs`. Keep the scope list in that file and the PR-title check in step
 with each other.
+
+## Easter eggs
+
+Seasonal sounds appear as extra sound buttons, by the phone's local date:
+
+| Sound | In season | What it does |
+| --- | --- | --- |
+| 👻 Ghost | Oct 31 | High, wavering "wooo" (vibrato), ghost-in-a-glass-tube skin |
+| 🎅 Santa | Dec 24–25 | Each flip is three "ho"s (`pulses`), lands with sleigh bells (`impact: "jingle"`), Santa-suit skin |
+
+Unlock them any day from the browser console. Unlocks are saved per device in
+localStorage, and locked sounds still appear in season:
+
+```js
+groanTubes.help()
+groanTubes.unlock("ghost")  // "santa" | "all"
+groanTubes.lock("all")
+groanTubes.list()
+```
+
+To add one, add an entry to `SEASONAL` in `src/seasonal.ts` (dates, emoji, preset
+values), a `body[data-skin="<id>"]` skin and a `.bar-<id>` colour in `src/style.css`.
+Render it offline to check its level against Groan (RMS around 0.07–0.1).
 
 ## Things that are easy to break
 

@@ -31,6 +31,12 @@ export interface Preset {
   reverse: { pitch: number; level: number };
   /** Pitch drift over a fall, as a fraction: forward climbs, reverse sags. */
   drift: number;
+  /** Optional wobble in pitch: rate in Hz, depth as a fraction. */
+  vibrato?: { rate: number; depth: number };
+  /** Split each fall into this many separate bursts ("ho-ho-ho"). */
+  pulses?: number;
+  /** What hitting the end cap sounds like. Default "knock". */
+  impact?: "knock" | "jingle";
 }
 
 export const PRESETS: Preset[] = [
@@ -183,6 +189,15 @@ export class GroanVoice {
     let level = flow < 0.03 ? 0 : Math.pow(clamp01(flow), 0.8) * p.level;
     if (reverse) level *= p.reverse.level;
 
+    // Pulsed presets: each fall is n bursts, each one dipping in pitch like "ho".
+    let pulseBend = 1;
+    if (p.pulses && level > 0) {
+      const beat = (t * p.pulses) % 1;
+      // Each "ho" takes 80% of its slot, then a short gap so they don't run together.
+      level *= beat < 0.8 ? Math.pow(Math.sin((Math.PI * beat) / 0.8), 0.8) : 0;
+      pulseBend = 1.06 - 0.12 * beat;
+    }
+
     if (level === 0) {
       // Let it die away at its last pitch and length.
       this.level.setTargetAtTime(0, now, 0.025);
@@ -201,7 +216,9 @@ export class GroanVoice {
       // Flipping back always sags; a moo (negative drift) sags both ways.
       (reverse ? p.reverse.pitch * (1 - Math.abs(p.drift) * t) : 1 + p.drift * t) *
       (0.98 + 0.02 * flow) *
-      (1 + this.jitter);
+      (1 + this.jitter) *
+      pulseBend *
+      (p.vibrato ? 1 + p.vibrato.depth * Math.sin(2 * Math.PI * p.vibrato.rate * now) : 1);
     this.pitchHz = pitch;
 
     this.f0.setTargetAtTime(pitch, now, 0.02);
@@ -211,6 +228,7 @@ export class GroanVoice {
 
   /** The weight hitting the end cap. */
   thunk(strength: number) {
+    if (this.preset.impact === "jingle") return this.jingle(strength);
     const ctx = this.ctx;
     const now = ctx.currentTime;
     const s = clamp01(strength);
@@ -239,6 +257,28 @@ export class GroanVoice {
     knock.connect(kg).connect(this.master);
     knock.start(now);
     knock.stop(now + 0.08);
+  }
+
+  /** A sleigh-bell shake: a few bright, inharmonic pings, slightly staggered. */
+  private jingle(strength: number) {
+    const ctx = this.ctx;
+    const s = clamp01(strength);
+    const start = ctx.currentTime;
+    for (let bell = 0; bell < 3; bell++) {
+      const t0 = start + bell * 0.035 + Math.random() * 0.01;
+      const base = 2400 + Math.random() * 500;
+      for (const ratio of [1, 1.47, 2.09, 2.76]) {
+        const osc = ctx.createOscillator();
+        osc.frequency.value = base * ratio;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime((0.09 * s + 0.005) / ratio, t0 + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18 / ratio);
+        osc.connect(g).connect(this.master);
+        osc.start(t0);
+        osc.stop(t0 + 0.2);
+      }
+    }
   }
 
   /** Cut the sound instantly and unhook it from the speakers. */
