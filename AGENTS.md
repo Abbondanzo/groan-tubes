@@ -103,6 +103,10 @@ with each other.
   flip shrinks the column and the return flip grows it. To change the sound, render it
   offline (`OfflineAudioContext` + `GroanVoice.create`) and compare spectrograms with a
   real recording rather than tuning by ear.
+- **Thunks need a run-up.** A weight resting against a cap stays put, and an end-cap hit
+  only counts after travelling `MIN_RUN` of the tube since it last started or turned
+  around, faster than `MIN_IMPACT`. Without that, a resting weight clicked on every slow
+  frame.
 
 ## Before opening a PR
 
